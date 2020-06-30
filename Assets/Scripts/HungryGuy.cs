@@ -5,105 +5,109 @@ using UnityEngine;
 
 [ExecuteInEditMode]
 public class HungryGuy : MonoBehaviour {
-    public float appleScore = 10f; //fitness per apple eaten
 
-    public float rayLength = 10f;
-    public float maxRayLength = 10f;
-    int numberOfRays = 10;
     public float energy = 100f;
-    public float startEnergy;
-    public float moveEnergy = 2f;
-    public float rotationEnergy = 0.1f;
+    public float energyLossWhenHitMan = 30f;
+    public float energyPerApple = 10f;
+    public float energyLossOutside = 10f;
+    public float energyStart;
+    public float energyToMove = 0.5f;
+    public float energyToRotate = 0.01f;
+    public float maxRayLength = 10f;
+    public float energyPassiveLoss = 0.005f;
+    public float moveSpeed = 3;
+
+    public int numberEyes = 10;
     public bool dead = false;
+    public bool hasMostEnergy = false;
 
     public NeuralNetwork nn;
-    public float fitness = 0;
+
 
     public void Start() {
-        startEnergy = energy;
-        int[] nnStructure = { numberOfRays*2, 10,20, 3 };
+        energyStart = energy;
+        int[] nnStructure = { numberEyes, 7,9, 3 };
         nn = new NeuralNetwork(nnStructure);
+    }
+
+    public void ResetStats() {
+        energy = energyStart;
+        dead = false;
+        hasMostEnergy = false;
     }
 
     public void Update() {
         if (!dead) {
-            float[] inputs = ScanEnvironment(); //Returns values for each eye.
-            int action = PredictBestAction(inputs);
-            PerformAction(action);
-            print(Vector3.Distance(transform.position, Vector3.zero));
-            if (Vector3.Distance(transform.position, Vector3.zero) > 10) {
-                fitness -= 1;
+            PerformAction();
+            if (Vector3.Distance(transform.position, Vector3.zero) > EventManager.arenaSize) {
+                energy -= energyLossOutside;
+            }
+            if (energy < 0) {
+                energy -= Mathf.Infinity;
+                dead = true;
+            }
+            UpdateSize();
+            if (hasMostEnergy) {
+                GetComponent<MeshRenderer>().material.color = Color.red;
+            } else {
+                GetComponent<MeshRenderer>().material.color = Color.blue;
             }
         }
-        if(energy < 0) {
-            fitness = -Mathf.Infinity;
-            dead = true;
-        }
-        UpdateSize();
+
     }
 
     //Make those with less energy look small
     private void UpdateSize() {
-        float size = Mathf.InverseLerp(0, startEnergy, energy);
-        Vector3 newSize = new Vector3(size,size,size);
+        float size = Mathf.InverseLerp(0, energyStart, energy);
+        Vector3 newSize = new Vector3(size, size, size);
         transform.localScale = newSize;
     }
 
     private float[] ScanEnvironment() {
         RaycastHit hit;
-        float angleOffset = 90 / numberOfRays; //Divide by number of rays.
-        float[] inputs = new float[numberOfRays*2]; //*2, once for food, 2nd for enemy.
-
-        int c = 0; //Identify which input neuron to calc value for.
-        for (float angle = -45; angle <= 45; angle += angleOffset) {
+        float[] inputs = new float[numberEyes];
+        float angleOffset = Mathf.Floor(180 / numberEyes); //Divide by number of rays.
+        float angle = -90f;
+        for (int i = 0; i < inputs.Length; i ++) {
             var direction = Quaternion.AngleAxis(angle, transform.up) * transform.forward;
             int mask = LayerMask.GetMask("food");
             if (Physics.Raycast(transform.position, direction, out hit, maxRayLength, mask)) {
                 float mapped = Mathf.InverseLerp(0, maxRayLength, hit.distance);
-                inputs[c] = mapped;
-            } else {
-                inputs[c] = -0.1f;
-            }
-        }
-        c++;
-
-        c = numberOfRays-1;
-        for (float angle = -45; angle <= 45; angle += angleOffset) {
-            var direction = Quaternion.AngleAxis(angle, transform.up) * transform.forward;
-            int mask = LayerMask.GetMask("man");
-            if (Physics.Raycast(transform.position, direction, out hit, maxRayLength, mask)) {
+                inputs[i] = mapped;
                 Debug.DrawRay(transform.position, direction * hit.distance);
-                float mapped = Mathf.InverseLerp(0, maxRayLength, hit.distance);
-                inputs[c] = mapped;
             } else {
+                inputs[i] = 1f;
                 Debug.DrawRay(transform.position, direction * maxRayLength);
-                inputs[c] = -0.1f;
             }
-            c++;
+            angle += angleOffset;
         }
         return inputs;
     }
 
-    private void PerformAction(int action) {
-        print(action);
+    private void PerformAction() {
+        float[] inputs = ScanEnvironment();
+        float[] outputs = nn.FeedForward(inputs);
+        int action = PredictBestAction(outputs);
+        float amount = outputs[action];
+        energy -= energyPassiveLoss;
         switch (action) {
             case (0):
-                transform.Rotate(new Vector3(0, 5f, 0));
-                energy -= moveEnergy;
+                transform.Rotate(new Vector3(0, amount*10f, 0));
+                energy -= energyToRotate;
                 break;
             case (1):
-                transform.Rotate(new Vector3(0, 5f, 0));
-                energy -= rotationEnergy;
+                transform.Rotate(new Vector3(0, amount*10f, 0));
+               energy -= energyToRotate;
                 break;
             case (2):
-                transform.Translate(Vector3.forward * 0.3f);
-                energy -= rotationEnergy;
+                transform.Translate(Vector3.forward*amount*(1/moveSpeed));
+                energy -= energyToMove * (1+Mathf.Abs(amount));
                 break;
         }
     }
 
-    private int PredictBestAction(float[] inputs) {
-        float[] outputs = nn.FeedForward(inputs); //get the nn prediction for best move. (left, right or forward)
+    private int PredictBestAction(float[] outputs) {
+        //get the nn prediction for best move. (left, right or forward)
         int action = 0;
         for (int i = 0; i < outputs.Length; i++) {
             if (outputs[i] > outputs[action]) {
@@ -116,9 +120,11 @@ public class HungryGuy : MonoBehaviour {
     public void OnCollisionEnter(Collision collision) {
         GameObject objHit = collision.collider.gameObject;
         if (objHit.tag == "food") {
-            fitness += appleScore;
-            energy += 20f;
+            energy += energyPerApple;
             Destroy(objHit);
+        }
+        if (objHit.tag == "man") {
+            //energy -= energyLossWhenHitMan;
         }
     }
 }

@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: -5916753460764640725}
   m_Layer: 8
   m_Name: Hungry Man
-  m_TagString: Untagged
+  m_TagString: man
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -107,15 +107,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ee918c1915df7643acb3ee9fb8dc3e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  appleScore: 10
-  rayLength: 10
+  energy: 100
+  energyLossWhenHitMan: 30
+  energyPerApple: 40
+  energyLossOutside: 10
+  energyStart: 100
+  energyToMove: 0.01
+  energyToRotate: 0.005
   maxRayLength: 10
-  energy: 99.14995
-  startEnergy: 100
-  moveEnergy: 1
-  rotationEnergy: 0.05
+  energyPassiveLoss: 0.05
+  moveSpeed: 2
+  numberEyes: 10
   dead: 0
-  fitness: -1
+  hasMostEnergy: 0
 --- !u!54 &-5916753460764640725
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -128,7 +132,7 @@ Rigidbody:
   m_Drag: 0
   m_AngularDrag: 0.05
   m_UseGravity: 0
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 126
   m_CollisionDetection: 0
