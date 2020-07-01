@@ -108,7 +108,7 @@ public class NeuralNetwork {
             for (int j = 0; j < weights[i].Length; j++) {
                 for (int k = 0; k < weights[i][j].Length; k++) {
                     float weight = weights[i][j][k];
-                    float randomNumber = UnityEngine.Random.Range(0f, 1000f);
+                    float randomNumber = UnityEngine.Random.Range(0f, 100f);
 
                     if (randomNumber <= 2f) {
                         weight *= -1f;
@@ -120,9 +120,6 @@ public class NeuralNetwork {
                     } else if (randomNumber <= 8f) {
                         float factor = UnityEngine.Random.Range(0f, 1f);
                         weight *= factor;
-                    }else if(randomNumber <= 10f) {
-                        InitNeurons();
-                        InitWeights();
                     }
                     weights[i][j][k] = weight;
                 }
