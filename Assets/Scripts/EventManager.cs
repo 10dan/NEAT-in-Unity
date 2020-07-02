@@ -59,7 +59,7 @@ public class EventManager : MonoBehaviour {
         print("The best generation: " + bestGenerationAvg);
 
         // ----   FIND THE FITTEST FROM THIS GENERATION ----
-        int num = numberMen / 20; //Take 5% of the top population for breeding.
+        int num = 2; //Take 5% of the top population for breeding.
         HungryGuy[] top = new HungryGuy[num]; //Store the top "num" of men with highest energy.
         //Fill top up randomly. Avoid null pointers in following loop.
         for (int i = 0; i < top.Length; i++) {
@@ -96,11 +96,7 @@ public class EventManager : MonoBehaviour {
                     for (int z = 0; z < newBrain[x][y].Length; z++) {
                         //0 or 1, pick randomly between parents.
                         int r = UnityEngine.Random.Range(0, 2);
-                        if (r == 0) {
-                            newBrain[x][y][z] = top[parent1].nn.weights[x][y][z];
-                        } else {
-                            newBrain[x][y][z] = top[parent2].nn.weights[x][y][z];
-                        }
+                        newBrain[x][y][z] = (top[parent1].nn.weights[x][y][z] + top[parent2].nn.weights[x][y][z]) / 2f ;
                     }
                 }
             }
@@ -109,8 +105,8 @@ public class EventManager : MonoBehaviour {
             //Replace the mens old brains, with the one we just made.
             activeMen[i].nn.CopyWeights(newBrain);
             activeMen[i].nn.Mutate();
-            float ra = UnityEngine.Random.Range(0,100);
-            if(ra < 5) {
+            float ra = UnityEngine.Random.Range(0, 100);
+            if (ra < 5) {
                 activeMen[i].nn.InitNeurons();
                 activeMen[i].nn.InitWeights();
             }
