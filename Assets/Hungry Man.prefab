@@ -113,20 +113,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   deathFX: {fileID: 4985345640163605918, guid: 73c85ad997e737d4a9952804ed0727d5, type: 3}
-  energy: 100
-  energyLossWhenHitMan: 100
-  energyPerApple: 90
-  energyLossOutside: 1
-  energyStart: 100
-  energyToMove: 0.1
-  energyToRotate: 0.05
-  energyWhenDead: 0
-  maxRayLength: 20
-  energyPassiveLoss: 0.25
-  moveSlow: 6
-  numberEyes: 10
+  debugMode: 0
+  manPrefab: {fileID: 466255487020024455}
+  menParent: {fileID: 0}
   dead: 0
-  hasMostEnergy: 0
 --- !u!54 &-5916753460764640725
 Rigidbody:
   m_ObjectHideFlags: 0

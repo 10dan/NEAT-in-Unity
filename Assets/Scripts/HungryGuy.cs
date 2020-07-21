@@ -5,73 +5,112 @@ using UnityEngine;
 
 [ExecuteInEditMode]
 public class HungryGuy : MonoBehaviour {
-    public ParticleSystem deathFX;
 
-    public float energy = 100f;
-    public float energyLossWhenHitMan = 30f;
-    public float energyPerApple = 10f;
-    public float energyLossOutside = 10f;
-    public float energyStart;
-    public float energyToMove = 0.5f;
-    public float energyToRotate = 0.01f;
-    public float energyWhenDead = 1000f;
-    public float maxRayLength = 10f;
-    public float energyPassiveLoss = 0.005f;
-    public float moveSlow = 3;
-    bool bugging = true;
-
-    public int numberEyes = 30;
+    //Constants:
+    int numberEyes = 30;
+    int thingsToSee = 2; //Food and other men.
+    [SerializeField] ParticleSystem deathFX;
+    [SerializeField] bool debugMode = false;
+    //References needed to spawn more men.
+    [SerializeField] HungryGuy manPrefab;
     public bool dead = false;
-    public bool hasMostEnergy = false;
+    const float energyStart = 100f;
+
+
+    public float energy; //Track how much energy they have left.
+    public float energyPerApple;
+    public float energyToMove;
+    public float energyToRotate;
+    public float maxRayLength;
+    public float energyPassiveLoss;
+    public float movementSlowFactor;
+    public float energyLossHitMan;
+    public float energyForBaby;
+    public float sizeFactor;
+    public Color color;
 
     public NeuralNetwork nn;
 
+    private void Start() {
+        //Determine energy genes.
+        energy = energyStart;
+        energyPerApple = UnityEngine.Random.value * 50f;
+        energyToMove = UnityEngine.Random.value * 2f;
+        energyToRotate = UnityEngine.Random.value * 0.1f;
+        maxRayLength = UnityEngine.Random.value * 10f;
+        energyPassiveLoss = UnityEngine.Random.value * 0.1f;
+        movementSlowFactor = (UnityEngine.Random.value);
+        energyLossHitMan = UnityEngine.Random.value * 200f;
+        energyForBaby = UnityEngine.Random.value * 100f;
+        color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
+        GetComponent<MeshRenderer>().material.color = color;
 
-    public void Start() {
-        energyStart = energy;
-        int[] nnStructure = { numberEyes * 2, 10, 10, 3 };
+        //Make the brain.
+        int[] nnStructure = { numberEyes * thingsToSee, 10, 10, 3 };
         nn = new NeuralNetwork(nnStructure);
+
+        //So that dont collide with parents imediatly.
+        GetComponent<BoxCollider>().enabled = false;
+        GetComponent<Rigidbody>().detectCollisions = false;
+        StartCoroutine(EnableCollisions());
+
+        StartCoroutine(MakeBaby());
     }
 
+    IEnumerator EnableCollisions() {
+        yield return new WaitForSeconds(1f); //wait for a second then enable colliders.
+        GetComponent<BoxCollider>().enabled = true;
+        GetComponent<Rigidbody>().detectCollisions = true;
+    }
 
+    IEnumerator MakeBaby() {
+        while (true) {
+            yield return new WaitForSeconds(3f); //wait for a second then enable colliders.
+            if (energy > energyForBaby) {
+                //TODO: make it so genes actually get passed to offspring.
+                GameObject go = Instantiate(gameObject);
+                HungryGuy baby = go.GetComponent<HungryGuy>();
+                baby.energyPerApple = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.energyToMove = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.energyToRotate = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.maxRayLength = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.energyPassiveLoss = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.movementSlowFactor = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.energyLossHitMan = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.energyForBaby = energyPerApple + (UnityEngine.Random.value - 0.5f);
+                baby.GetComponent<MeshRenderer>().material.color = color;
+                baby.nn = nn;
+                baby.nn.Mutate();
+            }
+        }
+    }
 
     public void Update() {
         if (!dead) {
             PerformAction();
-            CheckIfOutside();
-            CheckIfDead();
             UpdateSize();
+            CheckIfDead();
         }
     }
-
-
 
     private void CheckIfDead() {
         if (energy <= 0f) {
             dead = true;
-            energy -= energyWhenDead;
-            GetComponent<BoxCollider>().enabled = false;
-            GetComponent<Rigidbody>().detectCollisions = false;
             Instantiate(deathFX, transform.position, Quaternion.identity);
-        }
-    }
-
-    private void CheckIfOutside() {
-        if (Vector3.Distance(transform.position, Vector3.zero) > EventManager.arenaSize) {
-            energy -= energyLossOutside;
+            Destroy(gameObject);
         }
     }
 
     //Make those with less energy look small
     private void UpdateSize() {
-        float size = Mathf.InverseLerp(0, energyStart, energy);
+        float size = Mathf.InverseLerp(-10, energyStart, energy);
         if (dead) size = 0;
         Vector3 newSize = new Vector3(size, size, size);
         transform.localScale = newSize;
-
     }
 
     private float[] ScanEnvironment(string maskName) {
+        //TODO: Give memory of last scan.
         RaycastHit hit;
         float[] inputs = new float[numberEyes];
         float angleOffset = Mathf.Floor(240 / numberEyes); //Divide by number of rays.
@@ -82,11 +121,10 @@ public class HungryGuy : MonoBehaviour {
             if (Physics.Raycast(transform.position, direction, out hit, maxRayLength, mask)) {
                 float mapped = Mathf.InverseLerp(0, maxRayLength, hit.distance);
                 inputs[i] = mapped;
-                if (bugging) Debug.DrawRay(transform.position, direction * hit.distance);
-
+                if (debugMode) Debug.DrawRay(transform.position, direction * hit.distance);
             } else {
                 inputs[i] = 1f;
-                if (bugging) Debug.DrawRay(transform.position, direction * maxRayLength);
+                if (debugMode) Debug.DrawRay(transform.position, direction * maxRayLength);
             }
             angle += angleOffset;
         }
@@ -97,6 +135,7 @@ public class HungryGuy : MonoBehaviour {
         float[] foodInputs = ScanEnvironment("food");
         float[] menInputs = ScanEnvironment("man");
         float[] inputs = new float[numberEyes * 2];
+        //Copy the scanned information into one array.
         foodInputs.CopyTo(inputs, 0);
         menInputs.CopyTo(inputs, numberEyes);
         float[] outputs = nn.FeedForward(inputs);
@@ -113,7 +152,7 @@ public class HungryGuy : MonoBehaviour {
                 energy -= energyToRotate;
                 break;
             case (2):
-                transform.Translate(Vector3.forward * amount * (1 / moveSlow));
+                transform.Translate(Vector3.forward * amount * movementSlowFactor);
                 energy -= energyToMove;
                 break;
         }
@@ -138,16 +177,8 @@ public class HungryGuy : MonoBehaviour {
                 Destroy(objHit);
             }
             if (objHit.tag == "man") {
-                energy -= energyLossWhenHitMan;
+                energy -= energyLossHitMan;
             }
         }
-    }
-
-    public void ResetStats() {
-        energy = energyStart;
-        dead = false;
-        hasMostEnergy = false;
-        GetComponent<BoxCollider>().enabled = true;
-        GetComponent<Rigidbody>().detectCollisions = true;
     }
 }
