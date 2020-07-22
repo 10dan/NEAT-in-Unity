@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[ExecuteInEditMode]
+//[ExecuteInEditMode]
 public class HungryGuy : MonoBehaviour {
 
     //Constants:
@@ -31,31 +31,44 @@ public class HungryGuy : MonoBehaviour {
 
     public NeuralNetwork nn;
 
-    private void Start() {
-        //Determine energy genes.
+    private void Awake() {
+
         energy = energyStart;
-        energyPerApple = UnityEngine.Random.value * 50f;
-        energyToMove = UnityEngine.Random.value * 2f;
-        energyToRotate = UnityEngine.Random.value * 0.1f;
-        maxRayLength = UnityEngine.Random.value * 10f;
-        energyPassiveLoss = UnityEngine.Random.value * 0.1f;
-        movementSlowFactor = (UnityEngine.Random.value);
-        energyLossHitMan = UnityEngine.Random.value * 200f;
-        energyForBaby = UnityEngine.Random.value * 100f;
+
+        //energyPerApple = UnityEngine.Random.value * 100f;
+        //energyToMove = UnityEngine.Random.value * 1f;
+        //energyToRotate = UnityEngine.Random.value * 1f;
+        //maxRayLength = UnityEngine.Random.value * 30f;
+        //energyPassiveLoss = UnityEngine.Random.value * 0.1f;
+        //movementSlowFactor = (UnityEngine.Random.value) * 0.3f;
+        //energyLossHitMan = UnityEngine.Random.value * 400f;
+        //energyForBaby = (UnityEngine.Random.value+1) * 50f;
+
+        energyPerApple = 300f;
+        energyToMove = 0.3f;
+        energyToRotate = 0.05f;
+        maxRayLength = 20f;
+        energyPassiveLoss = 0.2f;
+        movementSlowFactor = 0.2f;
+        energyLossHitMan = 100f;
+        energyForBaby = 100f;
+
         color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
         GetComponent<MeshRenderer>().material.color = color;
-
         //Make the brain.
         int[] nnStructure = { numberEyes * thingsToSee, 10, 10, 3 };
         nn = new NeuralNetwork(nnStructure);
 
+
+
         //So that dont collide with parents imediatly.
         GetComponent<BoxCollider>().enabled = false;
         GetComponent<Rigidbody>().detectCollisions = false;
-        StartCoroutine(EnableCollisions());
 
+        StartCoroutine(EnableCollisions());
         StartCoroutine(MakeBaby());
     }
+
 
     IEnumerator EnableCollisions() {
         yield return new WaitForSeconds(1f); //wait for a second then enable colliders.
@@ -65,24 +78,33 @@ public class HungryGuy : MonoBehaviour {
 
     IEnumerator MakeBaby() {
         while (true) {
-            yield return new WaitForSeconds(3f); //wait for a second then enable colliders.
+            yield return new WaitForSeconds(1f); //wait for a second then enable colliders.
             if (energy > energyForBaby) {
-                //TODO: make it so genes actually get passed to offspring.
-                GameObject go = Instantiate(gameObject);
-                HungryGuy baby = go.GetComponent<HungryGuy>();
-                baby.energyPerApple = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.energyToMove = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.energyToRotate = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.maxRayLength = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.energyPassiveLoss = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.movementSlowFactor = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.energyLossHitMan = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.energyForBaby = energyPerApple + (UnityEngine.Random.value - 0.5f);
-                baby.GetComponent<MeshRenderer>().material.color = color;
-                baby.nn = nn;
-                baby.nn.Mutate();
+                int c = GameObject.FindGameObjectsWithTag("man").Length;
+                if (c < 150) {
+                    Vector3 newPos = transform.position + Vector3.left * 2;
+                    GameObject go = Instantiate(gameObject, newPos, Quaternion.identity);
+                    go.GetComponent<HungryGuy>().CopyParent(gameObject);
+                    energy -= energyForBaby/2;
+                }
             }
         }
+    }
+
+    public void CopyParent(GameObject parent) {
+        HungryGuy parentScript = parent.GetComponent<HungryGuy>();
+        //energyPerApple = parentScript.energyPerApple + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        //energyToMove = parentScript.energyToMove + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        //energyToRotate = parentScript.energyToRotate + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        //maxRayLength = parentScript.maxRayLength + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        //energyPassiveLoss = parentScript.energyPassiveLoss + Mathf.Lerp(-0.05f, 0.05f,UnityEngine.Random.value);
+        //movementSlowFactor = parentScript.movementSlowFactor +Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value); 
+        //energyLossHitMan = parentScript.energyLossHitMan + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        //energyForBaby = parentScript.energyForBaby + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
+        color = parentScript.color;
+        GetComponent<MeshRenderer>().material.color = color;
+        nn.CopyWeights(parentScript.nn.weights);
+        nn.Mutate();
     }
 
     public void Update() {

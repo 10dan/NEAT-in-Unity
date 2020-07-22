@@ -42,17 +42,17 @@ public class EventManager : MonoBehaviour {
 
     IEnumerator SpawnFruit() {
         while (true) {
+            yield return new WaitForSeconds(fruitTimer);
             Vector3 spawnPos = GenerateRandomLocation();
             GameObject apple = Instantiate(food, spawnPos, Quaternion.identity, foodParent);
-            yield return new WaitForSeconds(fruitTimer);
         }
     }
 
     IEnumerator SpawnMan() {
         while (true) {
+            yield return new WaitForSeconds(newManTimer);
             Vector3 spawnPos = GenerateRandomLocation();
             HungryGuy guy = Instantiate(man, spawnPos, Quaternion.identity, menParent);
-            yield return new WaitForSeconds(newManTimer);
         }
     }
 

@@ -309,7 +309,22 @@ PrefabInstance:
     - target: {fileID: 288779268773528669, guid: 1dec9461a53407746be50741099d72b7,
         type: 3}
       propertyPath: fruitTimer
-      value: 10
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 288779268773528669, guid: 1dec9461a53407746be50741099d72b7,
+        type: 3}
+      propertyPath: numberMen
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 288779268773528669, guid: 1dec9461a53407746be50741099d72b7,
+        type: 3}
+      propertyPath: newManTimer
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 288779268773528669, guid: 1dec9461a53407746be50741099d72b7,
+        type: 3}
+      propertyPath: numberFood
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 288779268773528670, guid: 1dec9461a53407746be50741099d72b7,
         type: 3}
