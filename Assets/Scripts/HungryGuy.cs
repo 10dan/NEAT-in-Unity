@@ -11,124 +11,115 @@ public class HungryGuy : MonoBehaviour {
     int thingsToSee = 2; //Food and other men.
     [SerializeField] ParticleSystem deathFX;
     [SerializeField] bool debugMode = false;
-    //References needed to spawn more men.
     [SerializeField] HungryGuy manPrefab;
-    public bool dead = false;
-    const float energyStart = 100f;
+    const float energyStart = 200f;
+
+    float energy;
+    float energyPerApple;
+    float energyToMove;
+    float energyToRotate;
+    float maxRayLength;
+    float energyPassiveLoss;
+    float movementSlowFactor;
+    float energyLossHitMan;
+    Color color;
+
+    NeuralNetwork nn;
 
 
-    public float energy; //Track how much energy they have left.
-    public float energyPerApple;
-    public float energyToMove;
-    public float energyToRotate;
-    public float maxRayLength;
-    public float energyPassiveLoss;
-    public float movementSlowFactor;
-    public float energyLossHitMan;
-    public float energyForBaby;
-    public float sizeFactor;
-    public Color color;
-
-    public NeuralNetwork nn;
-
-    private void Awake() {
-
+    private void InitVariables() {
         energy = energyStart;
-
-        //energyPerApple = UnityEngine.Random.value * 100f;
-        //energyToMove = UnityEngine.Random.value * 1f;
-        //energyToRotate = UnityEngine.Random.value * 1f;
-        //maxRayLength = UnityEngine.Random.value * 30f;
-        //energyPassiveLoss = UnityEngine.Random.value * 0.1f;
-        //movementSlowFactor = (UnityEngine.Random.value) * 0.3f;
-        //energyLossHitMan = UnityEngine.Random.value * 400f;
-        //energyForBaby = (UnityEngine.Random.value+1) * 50f;
-
-        energyPerApple = 300f;
-        energyToMove = 0.3f;
-        energyToRotate = 0.05f;
+        energyPerApple = 50f;
+        energyToMove = 0.1f;
+        energyToRotate = 0f;
         maxRayLength = 20f;
-        energyPassiveLoss = 0.2f;
-        movementSlowFactor = 0.2f;
-        energyLossHitMan = 100f;
-        energyForBaby = 100f;
+        energyPassiveLoss = 0.1f;
+        movementSlowFactor = 0.1f;
+        energyLossHitMan = 1000f;
 
         color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
         GetComponent<MeshRenderer>().material.color = color;
-        //Make the brain.
-        int[] nnStructure = { numberEyes * thingsToSee, 10, 10, 3 };
-        nn = new NeuralNetwork(nnStructure);
-
-
+        GetComponent<TrailRenderer>().startColor = color;
+        GetComponent<TrailRenderer>().endColor = color;
 
         //So that dont collide with parents imediatly.
         GetComponent<BoxCollider>().enabled = false;
         GetComponent<Rigidbody>().detectCollisions = false;
+        GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeAll;
 
-        StartCoroutine(EnableCollisions());
-        StartCoroutine(MakeBaby());
+        //Random rotation so not alwys facing fowards.
+        transform.Rotate(new Vector3(0f, UnityEngine.Random.Range(0, 360), 0f));
     }
 
+    private void Awake() {
+        InitVariables();
+        int[] nnStructure = { numberEyes * thingsToSee, 10, 3 };
+        nn = new NeuralNetwork(nnStructure);
+        StartCoroutine(EnableCollisions());
+    }
+
+    public void Update() {
+        GetComponentInChildren<TextMesh>().text = energy.ToString("F1");
+        PerformAction();
+        UpdateSize();
+        CheckIfDead();
+    }
 
     IEnumerator EnableCollisions() {
         yield return new WaitForSeconds(1f); //wait for a second then enable colliders.
         GetComponent<BoxCollider>().enabled = true;
         GetComponent<Rigidbody>().detectCollisions = true;
-    }
-
-    IEnumerator MakeBaby() {
-        while (true) {
-            yield return new WaitForSeconds(1f); //wait for a second then enable colliders.
-            if (energy > energyForBaby) {
-                int c = GameObject.FindGameObjectsWithTag("man").Length;
-                if (c < 150) {
-                    Vector3 newPos = transform.position + Vector3.left * 2;
-                    GameObject go = Instantiate(gameObject, newPos, Quaternion.identity);
-                    go.GetComponent<HungryGuy>().CopyParent(gameObject);
-                    energy -= energyForBaby/2;
-                }
-            }
-        }
+        GetComponent<Rigidbody>().constraints &= ~RigidbodyConstraints.FreezePositionY;
     }
 
     public void CopyParent(GameObject parent) {
         HungryGuy parentScript = parent.GetComponent<HungryGuy>();
-        //energyPerApple = parentScript.energyPerApple + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
-        //energyToMove = parentScript.energyToMove + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
-        //energyToRotate = parentScript.energyToRotate + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
-        //maxRayLength = parentScript.maxRayLength + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
-        //energyPassiveLoss = parentScript.energyPassiveLoss + Mathf.Lerp(-0.05f, 0.05f,UnityEngine.Random.value);
-        //movementSlowFactor = parentScript.movementSlowFactor +Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value); 
-        //energyLossHitMan = parentScript.energyLossHitMan + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
-        //energyForBaby = parentScript.energyForBaby + Mathf.Lerp(-0.05f, 0.05f, UnityEngine.Random.value);
         color = parentScript.color;
         GetComponent<MeshRenderer>().material.color = color;
+        GetComponent<TrailRenderer>().startColor = color;
+        GetComponent<TrailRenderer>().endColor = color;
         nn.CopyWeights(parentScript.nn.weights);
         nn.Mutate();
     }
 
-    public void Update() {
-        if (!dead) {
-            PerformAction();
-            UpdateSize();
-            CheckIfDead();
-        }
-    }
-
     private void CheckIfDead() {
         if (energy <= 0f) {
-            dead = true;
-            Instantiate(deathFX, transform.position, Quaternion.identity);
+            ParticleSystem fx = Instantiate(deathFX, transform.position, Quaternion.identity);
+            fx.transform.Rotate(new Vector3(-90f, 0f, 0f));
             Destroy(gameObject);
         }
     }
 
-    //Make those with less energy look small
     private void UpdateSize() {
-        float size = Mathf.InverseLerp(-10, energyStart, energy);
-        if (dead) size = 0;
+        float size = Mathf.InverseLerp(0, energyStart, energy);
         Vector3 newSize = new Vector3(size, size, size);
         transform.localScale = newSize;
+    }
+
+    private void PerformAction() {
+        float[] food_inputs = ScanEnvironment("food");
+        float[] men_inputs = ScanEnvironment("man");
+        float[] inputs = new float[numberEyes * thingsToSee];
+        food_inputs.CopyTo(inputs, 0);
+        men_inputs.CopyTo(inputs, numberEyes);
+        float[] outputs = nn.FeedForward(inputs);
+        int action = PredictBestAction(outputs);
+        float amount = outputs[action];
+        energy -= energyPassiveLoss; //Passively lose energy if you do nothing.
+        switch (action) {
+            case (0):
+                transform.Rotate(new Vector3(0, -amount * 10f, 0));
+                energy -= energyToRotate;
+                break;
+            case (1):
+                transform.Rotate(new Vector3(0, amount * 10f, 0));
+                energy -= energyToRotate;
+                break;
+            case (2):
+                transform.Translate(Vector3.forward * amount * movementSlowFactor);
+                energy -= energyToMove;
+                break;
+        }
     }
 
     private float[] ScanEnvironment(string maskName) {
@@ -153,33 +144,6 @@ public class HungryGuy : MonoBehaviour {
         return inputs;
     }
 
-    private void PerformAction() {
-        float[] foodInputs = ScanEnvironment("food");
-        float[] menInputs = ScanEnvironment("man");
-        float[] inputs = new float[numberEyes * 2];
-        //Copy the scanned information into one array.
-        foodInputs.CopyTo(inputs, 0);
-        menInputs.CopyTo(inputs, numberEyes);
-        float[] outputs = nn.FeedForward(inputs);
-        int action = PredictBestAction(outputs);
-        float amount = outputs[action];
-        energy -= energyPassiveLoss; //Passively lose energy if you do nothing.
-        switch (action) {
-            case (0):
-                transform.Rotate(new Vector3(0, -amount * 10f, 0));
-                energy -= energyToRotate;
-                break;
-            case (1):
-                transform.Rotate(new Vector3(0, amount * 10f, 0));
-                energy -= energyToRotate;
-                break;
-            case (2):
-                transform.Translate(Vector3.forward * amount * movementSlowFactor);
-                energy -= energyToMove;
-                break;
-        }
-    }
-
     private int PredictBestAction(float[] outputs) {
         //get the nn prediction for best move. (left, right or forward)
         int action = 0;
@@ -193,14 +157,19 @@ public class HungryGuy : MonoBehaviour {
 
     public void OnCollisionEnter(Collision collision) {
         GameObject objHit = collision.collider.gameObject;
-        if (!dead) {
-            if (objHit.tag == "food") {
-                energy += energyPerApple;
-                Destroy(objHit);
-            }
-            if (objHit.tag == "man") {
-                energy -= energyLossHitMan;
-            }
+        if (objHit.tag == "food") {
+            energy += energyPerApple;
+            //Make baby
+            Vector3 newPos = transform.position;
+            newPos.y = 0.5f;
+            GameObject go = Instantiate(gameObject, newPos, Quaternion.identity);
+            go.GetComponent<HungryGuy>().CopyParent(gameObject);
+            //Destroy apple.
+            Destroy(objHit);
         }
+        if (objHit.tag == "man") {
+            energy -= energyLossHitMan;
+        }
+
     }
 }
