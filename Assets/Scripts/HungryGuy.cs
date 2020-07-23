@@ -7,12 +7,12 @@ using UnityEngine;
 public class HungryGuy : MonoBehaviour {
 
     //Constants:
-    int numberEyes = 30;
+    int numberEyes = 20;
     int thingsToSee = 2; //Food and other men.
     [SerializeField] ParticleSystem deathFX;
     [SerializeField] bool debugMode = false;
     [SerializeField] HungryGuy manPrefab;
-    const float energyStart = 200f;
+    const float energyStart = 100f;
 
     float energy;
     float energyPerApple;
@@ -29,12 +29,12 @@ public class HungryGuy : MonoBehaviour {
 
     private void InitVariables() {
         energy = energyStart;
-        energyPerApple = 50f;
+        energyPerApple = 100f;
         energyToMove = 0.1f;
         energyToRotate = 0f;
         maxRayLength = 20f;
-        energyPassiveLoss = 0.1f;
-        movementSlowFactor = 0.1f;
+        energyPassiveLoss = 0.05f;
+        movementSlowFactor = 0.15f;
         energyLossHitMan = 1000f;
 
         color = new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value);
@@ -53,13 +53,12 @@ public class HungryGuy : MonoBehaviour {
 
     private void Awake() {
         InitVariables();
-        int[] nnStructure = { numberEyes * thingsToSee, 10, 3 };
+        int[] nnStructure = { numberEyes * thingsToSee, 1000, 3 };
         nn = new NeuralNetwork(nnStructure);
         StartCoroutine(EnableCollisions());
     }
 
     public void Update() {
-        GetComponentInChildren<TextMesh>().text = energy.ToString("F1");
         PerformAction();
         UpdateSize();
         CheckIfDead();
