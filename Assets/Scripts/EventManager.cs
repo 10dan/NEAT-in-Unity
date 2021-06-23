@@ -21,6 +21,7 @@ public class EventManager : MonoBehaviour {
     private void Start() {
         MakeInitialArena();
         StartCoroutine(SpawnMan());
+        Time.timeScale = 3.0f;
     }
 
 
